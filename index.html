@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Product Tracker</title>
+<style>
+:root{
+  --wheat:#c98a3f; --wheat-dark:#8a5a22; --ink:#2b2620; --paper:#faf6ee;
+  --line:#e3d9c4; --card:#ffffff; --green:#5a7d5a; --blue:#4a6d8a; --red:#b6543f;
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:system-ui,-apple-system,sans-serif;}
+.wrap{max-width:900px; margin:0 auto; padding:28px 18px 70px;}
+header{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px;}
+h1{font-family:Georgia,serif; font-size:clamp(24px,5vw,32px); margin:0 0 4px;}
+.sub{font-size:13.5px; color:#78705f; margin:0;}
+.addbtn{background:var(--green); color:#fff; border:none; border-radius:6px; padding:11px 18px; font-size:14.5px; font-weight:600; cursor:pointer;}
+.searchbar{display:flex; gap:8px; margin-bottom:22px;}
+.searchbar input{flex:1; padding:11px 14px; border:1px solid var(--line); border-radius:6px; font-size:15px; background:var(--card); color:var(--ink);}
+.catgroup{margin-bottom:26px;}
+.cathead{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--wheat-dark); font-weight:700; border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:10px;}
+.cards{display:grid; gap:10px;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; gap:12px;}
+.thumb{width:56px; height:56px; border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:#fff; object-fit:cover;}
+.card-body{flex:1; min-width:0;}
+.card-top{display:flex; justify-content:space-between; gap:8px;}
+.pname{font-size:15.5px; font-weight:700;}
+.stars{color:var(--wheat); font-size:13px;}
+.badges{display:flex; gap:5px; flex-wrap:wrap; margin:6px 0;}
+.badge{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:9px; color:#fff;}
+.badge.gf{background:var(--green);} .badge.gfi{background:var(--blue);} .badge.df{background:var(--wheat-dark);}
+.meta-row{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:#6b6355; margin-top:4px;}
+.store-chip{background:#f3ede0; padding:3px 8px; border-radius:5px;}
+.store-chip a{color:var(--blue); text-decoration:none; font-weight:600;}
+.updated,.added-by{color:#9a9384;}
+.iconbtn{background:none; border:none; cursor:pointer; color:#9a9384; font-size:15px;}
+.empty{color:#8a8272; font-size:14px; padding:20px 2px; text-align:center;}
+.overlay{position:fixed; inset:0; background:rgba(20,16,8,.45); display:flex; align-items:center; justify-content:center; z-index:50;}
+.overlay.hidden{display:none;}
+.sheet{background:var(--paper); width:100%; max-width:560px; max-height:88vh; overflow-y:auto; border-radius:12px; padding:20px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; font-weight:700; color:#6b6355; margin-bottom:5px; text-transform:uppercase;}
+.field input,.field select{width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:6px; font-size:14.5px; background:var(--card); color:var(--ink);}
+.checks{display:flex; gap:14px; flex-wrap:wrap;}
+.checks label{display:flex; align-items:center; gap:6px; font-size:14px; font-weight:500;}
+.store-block{border:1px solid var(--line); border-radius:6px; padding:10px; margin-top:8px; display:none;}
+.store-block.active{display:block;}
+.imgpreview{width:72px; height:72px; border-radius:6px; object-fit:cover; margin-top:8px; display:none; background:#efe8d8;}
+.star-pick{font-size:24px; cursor:pointer;}
+.star-pick span{color:var(--line);}
+.star-pick span.on{color:var(--wheat);}
+.sheet-actions{display:flex; gap:10px; margin-top:18px;}
+.sheet-actions button{flex:1; padding:12px; border-radius:6px; border:none; font-size:14.5px; font-weight:600; cursor:pointer;}
+.save-btn{background:var(--green); color:#fff;}
+.cancel-btn{background:var(--card); color:var(--ink); border:1px solid var(--line) !important;}
+.del-btn{background:var(--red); color:#fff;}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#1b1812; --ink:#efe9dc; --card:#26221a; --line:#3a3428;}
+  .store-chip{background:#302a1e;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Product Tracker</h1>
+      <p class="sub">Shared with everyone who has this link.</p>
+    </div>
+    <button class="addbtn" id="openAdd">+ Add product</button>
+  </header>
+  <div class="searchbar"><input type="text" id="search" placeholder="Search name or category…"></div>
+  <div id="listRoot"></div>
+  <p class="empty" id="emptyMsg" style="display:none;">No products yet.</p>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">Add product</h2>
+    <input type="hidden" id="editId">
+    <div class="field"><label>Product name</label><input type="text" id="fName" maxlength="90"></div>
+    <div class="field"><label>Added by</label><input type="text" id="fAddedBy" placeholder="Your name" maxlength="40"></div>
+    <div class="field">
+      <label>Category</label>
+      <select id="fCategorySelect"><option value="">Select…</option><option value="__new__">+ New category</option></select>
+      <input type="text" id="fCategoryNew" placeholder="New category name" style="display:none; margin-top:6px;">
+    </div>
+    <div class="field">
+      <label>Classification</label>
+      <div class="checks">
+        <label><input type="checkbox" value="GF" class="fClass"> GF</label>
+        <label><input type="checkbox" value="GFI" class="fClass"> GFI</label>
+        <label><input type="checkbox" value="DF" class="fClass"> DF</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Product image</label>
+      <input type="url" id="fImgUrl" placeholder="Paste an image URL…">
+      <div style="font-size:12px;color:#9a9384;margin:6px 0;">— or —</div>
+      <input type="file" id="fImgFile" accept="image/*">
+      <img id="imgPreview" class="imgpreview">
+    </div>
+    <div class="field">
+      <label>Star rating</label>
+      <div class="star-pick" id="starPick">
+        <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Bought at</label>
+      <div class="checks">
+        <label><input type="checkbox" value="Coles" class="fStore"> Coles</label>
+        <label><input type="checkbox" value="Woolworths" class="fStore"> Woolworths</label>
+        <label><input type="checkbox" value="Aldi" class="fStore"> Aldi</label>
+        <label><input type="checkbox" value="Other" class="fStore"> Other</label>
+      </div>
+      <div id="storeBlocks"></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="cancel-btn" id="cancelBtn">Cancel</button>
+      <button class="del-btn" id="delBtn" style="display:none;">Delete</button>
+      <button class="save-btn" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// --- Fill these in from Supabase: Project Settings > API ---
+const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
+// The anon key is safe to expose client-side — it's designed for this.
+// Row Level Security (see schema.sql) is what actually controls access.
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const STORES = ['Coles','Woolworths','Aldi','Other'];
+const STORE_COLOR = {Coles:'#b6453a', Woolworths:'#4f7a4f', Aldi:'#3d6b96', Other:'#8a8272'};
+const PRESET_CATS = ['Fresh Food','Dairy','Bakery','Pantry','Frozen','Drinks','Snacks','Meat & Seafood','Health & Free From'];
+
+let items = [];
+let rating = 0;
+let editingImage = '';
+let editingFile = null;
+
+const listRoot = document.getElementById('listRoot');
+const emptyMsg = document.getElementById('emptyMsg');
+const overlay = document.getElementById('overlay');
+const storeBlocks = document.getElementById('storeBlocks');
+const search = document.getElementById('search');
+const catSelect = document.getElementById('fCategorySelect');
+const catNew = document.getElementById('fCategoryNew');
+
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function timeAgo(ts){
+  if(!ts) return '';
+  const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+  if(days <= 0) return 'Updated today';
+  if(days === 1) return 'Updated 1 day ago';
+  return 'Updated ' + days + ' days ago';
+}
+
+async function loadItems(){
+  const { data, error } = await supabase.from('products').select('*').order('category').order('name');
+  if(error){ console.error(error); return; }
+  items = data || [];
+  render();
+}
+
+// Live updates: any viewer's change refreshes everyone's list
+supabase.channel('products-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => loadItems())
+  .subscribe();
+
+function knownCategories(){
+  const set = new Set(PRESET_CATS);
+  items.forEach(it => { if(it.category) set.add(it.category); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+
+function refreshCatSelect(selected){
+  catSelect.innerHTML = '<option value="">Select…</option>';
+  knownCategories().forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c; catSelect.appendChild(o);
+  });
+  const n = document.createElement('option'); n.value = '__new__'; n.textContent = '+ New category'; catSelect.appendChild(n);
+  if(selected){
+    if(knownCategories().includes(selected)) catSelect.value = selected;
+    else { catSelect.value = '__new__'; catNew.style.display = 'block'; catNew.value = selected; }
+  }
+}
+catSelect.addEventListener('change', () => {
+  if(catSelect.value === '__new__'){ catNew.style.display = 'block'; catNew.focus(); }
+  else { catNew.style.display = 'none'; catNew.value = ''; }
+});
+
+function render(){
+  const q = search.value.trim().toLowerCase();
+  const filtered = items.filter(it => !q || it.name.toLowerCase().includes(q) || (it.category||'').toLowerCase().includes(q));
+  const cats = {};
+  filtered.forEach(it => { const c = it.category || 'Uncategorised'; (cats[c]=cats[c]||[]).push(it); });
+  const catNames = Object.keys(cats).sort((a,b)=>a.localeCompare(b));
+  listRoot.innerHTML = '';
+  emptyMsg.style.display = filtered.length ? 'none' : 'block';
+  catNames.forEach(cat => {
+    const group = cats[cat].sort((a,b)=>a.name.localeCompare(b.name));
+    const g = document.createElement('div'); g.className = 'catgroup';
+    g.innerHTML = '<div class="cathead">' + esc(cat) + '</div><div class="cards"></div>';
+    const cardsEl = g.querySelector('.cards');
+    group.forEach(it => cardsEl.appendChild(cardEl(it)));
+    listRoot.appendChild(g);
+  });
+}
+
+function cardEl(it){
+  const li = document.createElement('div'); li.className = 'card';
+  const stars = '★'.repeat(it.rating||0) + '☆'.repeat(5-(it.rating||0));
+  const badges = (it.classifications||[]).map(c => '<span class="badge '+c.toLowerCase()+'">'+c+'</span>').join('');
+  const chips = (it.stores||[]).map(s => {
+    const link = it.links && it.links[s] ? '<a href="'+esc(it.links[s])+'" target="_blank" rel="noopener">'+esc(s)+'</a>' : esc(s);
+    return '<span class="store-chip">'+link+'</span>';
+  }).join('');
+  const primary = (it.stores && it.stores[0]) || 'Other';
+  const color = STORE_COLOR[primary] || STORE_COLOR.Other;
+  const thumb = it.image
+    ? '<img class="thumb" src="'+it.image+'" alt="">'
+    : '<div class="thumb" style="background:'+color+';">'+primary.charAt(0)+'</div>';
+  const addedByTag = it.added_by ? '<span class="added-by">Added by '+esc(it.added_by)+'</span>' : '';
+  li.innerHTML = thumb +
+    '<div class="card-body"><div class="card-top"><div><div class="pname">'+esc(it.name)+'</div>'+
+    '<div class="stars">'+stars+'</div></div>'+
+    '<button class="iconbtn editB">✎</button></div>'+
+    '<div class="badges">'+badges+'</div>'+
+    '<div class="meta-row">'+chips+addedByTag+'<span class="updated">'+timeAgo(it.updated_at)+'</span></div></div>';
+  li.querySelector('.editB').onclick = () => openForm(it);
+  return li;
+}
+
+function buildStoreBlocks(existing){
+  storeBlocks.innerHTML = '';
+  STORES.forEach(s => {
+    const block = document.createElement('div'); block.className = 'store-block'; block.dataset.store = s;
+    const link = existing && existing.links ? existing.links[s]||'' : '';
+    block.innerHTML = '<div style="font-weight:700;font-size:13px;">'+s+'</div>'+
+      '<div style="margin-top:6px;"><input type="url" placeholder="Product link" class="linkIn" value="'+esc(link)+'"></div>';
+    storeBlocks.appendChild(block);
+  });
+}
+document.querySelectorAll('.fStore').forEach(cb => cb.addEventListener('change', () => {
+  const block = storeBlocks.querySelector('[data-store="'+cb.value+'"]');
+  if(block) block.classList.toggle('active', cb.checked);
+}));
+
+function updateStars(){ document.querySelectorAll('#starPick span').forEach(s => s.classList.toggle('on', +s.dataset.v <= rating)); }
+document.getElementById('starPick').addEventListener('click', e => { if(e.target.dataset.v){ rating = +e.target.dataset.v; updateStars(); } });
+
+document.getElementById('fImgUrl').addEventListener('input', e => {
+  editingImage = e.target.value.trim(); editingFile = null;
+  document.getElementById('fImgFile').value = '';
+  const p = document.getElementById('imgPreview');
+  if(editingImage){ p.src = editingImage; p.style.display = 'block'; } else p.style.display = 'none';
+});
+document.getElementById('fImgFile').addEventListener('change', e => {
+  const file = e.target.files[0]; if(!file) return;
+  editingFile = file; editingImage = '';
+  document.getElementById('fImgUrl').value = '';
+  const p = document.getElementById('imgPreview');
+  p.src = URL.createObjectURL(file); p.style.display = 'block';
+});
+
+function resetForm(){
+  document.getElementById('editId').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fAddedBy').value = localStorage.getItem('gf-myname') || '';
+  document.querySelectorAll('.fClass').forEach(c=>c.checked=false);
+  document.querySelectorAll('.fStore').forEach(c=>c.checked=false);
+  editingImage = ''; editingFile = null;
+  document.getElementById('fImgUrl').value = '';
+  document.getElementById('fImgFile').value = '';
+  document.getElementById('imgPreview').style.display = 'none';
+  rating = 0; updateStars();
+  buildStoreBlocks(); refreshCatSelect('');
+  catNew.style.display = 'none'; catNew.value = '';
+  document.getElementById('delBtn').style.display = 'none';
+  document.getElementById('sheetTitle').textContent = 'Add product';
+}
+
+function openForm(existing){
+  resetForm();
+  if(existing){
+    document.getElementById('sheetTitle').textContent = 'Edit product';
+    document.getElementById('editId').value = existing.id;
+    document.getElementById('fName').value = existing.name;
+    document.getElementById('fAddedBy').value = existing.added_by || localStorage.getItem('gf-myname') || '';
+    refreshCatSelect(existing.category || '');
+    (existing.classifications||[]).forEach(c => { const el = document.querySelector('.fClass[value="'+c+'"]'); if(el) el.checked = true; });
+    buildStoreBlocks(existing);
+    (existing.stores||[]).forEach(s => {
+      const el = document.querySelector('.fStore[value="'+s+'"]'); if(el) el.checked = true;
+      const block = storeBlocks.querySelector('[data-store="'+s+'"]'); if(block) block.classList.add('active');
+    });
+    rating = existing.rating || 0; updateStars();
+    if(existing.image){ editingImage = existing.image; const p = document.getElementById('imgPreview'); p.src = existing.image; p.style.display = 'block'; document.getElementById('fImgUrl').value = existing.image; }
+    document.getElementById('delBtn').style.display = 'block';
+  }
+  overlay.classList.remove('hidden');
+}
+
+document.getElementById('openAdd').onclick = () => openForm(null);
+document.getElementById('cancelBtn').onclick = () => overlay.classList.add('hidden');
+overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.add('hidden'); });
+
+document.getElementById('saveBtn').onclick = async () => {
+  const name = document.getElementById('fName').value.trim();
+  if(!name){ document.getElementById('fName').focus(); return; }
+  const category = (catSelect.value === '__new__' ? catNew.value : catSelect.value).trim();
+  const classifications = Array.from(document.querySelectorAll('.fClass:checked')).map(c=>c.value);
+  const stores = Array.from(document.querySelectorAll('.fStore:checked')).map(c=>c.value);
+  const links = {};
+  stores.forEach(s => {
+    const block = storeBlocks.querySelector('[data-store="'+s+'"]');
+    if(block){ const link = block.querySelector('.linkIn').value.trim(); if(link) links[s] = link; }
+  });
+  const addedBy = document.getElementById('fAddedBy').value.trim();
+  if(addedBy) localStorage.setItem('gf-myname', addedBy);
+
+  let imageUrl = editingImage;
+  if(editingFile){
+    const path = Date.now() + '-' + editingFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+    const { error: upErr } = await supabase.storage.from('images').upload(path, editingFile);
+    if(!upErr){
+      const { data: pub } = supabase.storage.from('images').getPublicUrl(path);
+      imageUrl = pub.publicUrl;
+    } else { console.error(upErr); }
+  }
+
+  const id = document.getElementById('editId').value;
+  const record = { name, category, classifications, stores, links, rating, image: imageUrl, added_by: addedBy };
+
+  const { error } = id
+    ? await supabase.from('products').update(record).eq('id', id)
+    : await supabase.from('products').insert(record);
+  if(error) console.error(error);
+
+  overlay.classList.add('hidden');
+  // no manual reload needed — the realtime subscription refreshes everyone, including this tab
+};
+
+document.getElementById('delBtn').onclick = async () => {
+  const id = document.getElementById('editId').value;
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if(error) console.error(error);
+  overlay.classList.add('hidden');
+};
+
+search.addEventListener('input', render);
+
+buildStoreBlocks();
+refreshCatSelect('');
+loadItems();
+</script>
+</body>
+</html>
